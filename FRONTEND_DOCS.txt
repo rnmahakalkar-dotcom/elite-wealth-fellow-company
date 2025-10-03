@@ -1,221 +1,293 @@
-Project: Elite Wealth (Frontend-Only)
+### Elite Wealth Frontend Documentation
 
-Overview
-- Stack: Vite + React + TypeScript + Tailwind + shadcn/ui
-- Routing: React Router (single-page)
-- State: Local React state + custom contexts
-- Backend: Mocked Supabase client (in-memory). No server required.
+This document describes how the Elite Wealth frontend works, how to run it locally, the data models it expects, and how to connect it to a real backend.
 
-Key Directories
-- src/contexts/AuthContext.tsx
-  - Provides auth/session/profile. Supports demoLogin(role) and OTP flows via mock.
-- src/integrations/supabase/client.ts
-  - In-memory mock exposing supabase-like API: auth, from(table), rpc(name, args), __seed(partial)
-  - Tables in mock DB: profiles, customers, agents, company_investments, payment_schedules, plans, customer_pii_access_log
-  - Query chain methods: select, eq, order, limit, gte, lte, in, single, insert, update
-  - RPC handlers implemented: get_customer_stats, get_customers_by_role, approve_customer_secure
-- src/lib/profileRepo.ts
-  - Centralized access to profiles single-table (getProfileByUserId, listProfiles, createProfile, updateUserRole)
-- src/lib/customerRepo.ts
-  - Investors/Plans access: listInvestorsWithAccess, listActivePlans, createInvestor, approveInvestorSecure
-- src/lib/demoSeed.ts
-  - Seeds demo data for plans, customers, agents, company_investments, payment_schedules
-- src/pages/
-  - Auth.tsx: Login UI with demo role buttons
-  - Dashboard.tsx: Cards and stats (uses RPC get_customer_stats + queries)
-  - Investors.tsx: CRUD + approvals + images + super_admin view modal
-  - Agents.tsx: CRUD + approvals + images + super_admin view button
-  - Investments.tsx: CRUD + approvals + images + super_admin view button
+---
 
-Data Models (frontend expectations)
+### Overview
+- Frontend-only React application built with Vite and TypeScript.
+- Domain data (investors, agents, investments, plans, payments) is provided by an in-memory mock (no database required for local/demos).
+- Authentication uses an OTP flow against a backend API. For local demos without a backend, you can bypass auth using the dev instructions below.
+
+---
+
+### Tech Stack
+- Vite + React + TypeScript
+- Tailwind CSS + shadcn/ui components
+- React Router (single-page app)
+- TanStack Query for data caching
+- Lightweight in-memory mock mimicking Supabase-like querying for domain data
+
+---
+
+### Quick Start
+1) Install Node.js 18+ (recommend installing via nvm)
+2) Install dependencies:
+   - npm i
+3) Start the dev server:
+   - npm run dev
+4) Open the app in your browser:
+   - http://localhost:5173 (default Vite port)
+
+---
+
+### Authentication
+The app uses an OTP-based sign-in flow backed by a backend API. The base URL is defined in `src/contexts/AuthContext.tsx` as `API_BASE`.
+
+- API base URL: `src/contexts/AuthContext.tsx` → `API_BASE = 'https://elite-wealth-company-project.vercel.app'`
+- OTP send: POST `/auth/otp-send` with `{ email }`
+- OTP verify/login: POST `/auth/login` with `{ email, otp }`
+- Fetch profile: GET `/auth/profile` with `Authorization: Bearer <token>`
+- Logout: POST `/auth/logout`
+
+If you need to point to your own backend, update `API_BASE` in `src/contexts/AuthContext.tsx`.
+
+#### Local development without a backend (auth bypass)
+Protected areas require a valid session with `user` and `profile` values present. For local demos without a backend, you can populate the required localStorage keys from your browser console and refresh:
+
+```js
+localStorage.setItem('authToken', 'dev-token');
+localStorage.setItem('authUser', JSON.stringify({
+  user_id: '00000000-0000-0000-0000-000000000001',
+  email: 'admin@example.com',
+  role: 'super_admin'
+}));
+localStorage.setItem('authProfile', JSON.stringify({
+  user_id: '00000000-0000-0000-0000-000000000001',
+  email: 'admin@example.com',
+  role: 'super_admin',
+  first_name: 'Admin',
+  last_name: 'User'
+}));
+location.reload();
+```
+
+- Sign out clears these values automatically. To manually reset, remove the three keys above from Local Storage.
+
+---
+
+### Data & Mock Layer (No real DB required)
+Domain data is served via a lightweight in-memory mock that provides a subset of a Supabase-like API.
+
+- Entry point: `src/main.tsx` calls `seedDemoData()` to populate demo data on load.
+- Mock client: `src/integrations/supabase/client.ts`
+  - Provides `auth` helpers (mocked) and table-like methods: `from(table).select().eq().insert().update()` and `rpc(name, args)`.
+  - In-memory tables: `profiles`, `customers`, `agents`, `company_investments`, `payment_schedules`, `plans`, and `customer_pii_access_log`.
+- Demo data: `src/lib/demoSeed.ts`
+  - Seeds `plans`, `customers`, `payment_schedules`, `agents`, and `company_investments`.
+
+This mock powers all domain UI so you can develop and demo the app without a real backend. When you connect a real backend, the repositories in `src/lib/*Repo.ts` are the integration points to update.
+
+---
+
+### Project Structure (selected)
+- `src/pages` — Route pages
+  - `Auth.tsx` — OTP sign-in UI
+  - `Dashboard.tsx` — KPIs and stats
+  - `Investors.tsx` — CRUD + approvals + images
+  - `Agents.tsx` — CRUD + approvals + images
+  - `Investments.tsx` — CRUD + approvals + images
+  - `Plans.tsx` — Manage/view plans (manager+)
+  - `Payments.tsx` — Scheduled payments view (manager+)
+  - `Users.tsx` — Manage users/roles (super_admin)
+  - `NotFound.tsx` — Fallback route
+- `src/components` — Layout and UI components (shadcn/ui in `components/ui`)
+- `src/contexts/AuthContext.tsx` — OTP auth flow, session/profile management
+- `src/lib` — Repository layer used by pages (`profileRepo.ts`, `customerRepo.ts`, `demoSeed.ts`)
+- `src/integrations/supabase/client.ts` — In-memory data mock
+
+---
+
+### Routing & Role Guard
+- Router: `src/App.tsx` uses React Router.
+- Guard: `src/components/ProtectedRoute.tsx`
+  - Redirects unauthenticated users to `/auth`.
+  - Role hierarchy: `office_staff` < `manager` < `super_admin`.
+  - Pages like `Plans`, `Payments`, and parts of `Investments` are restricted by role.
+
+---
+
+### Feature Overview by Page
+- `Auth`
+  - Enter email → send OTP → verify OTP to sign in.
+- `Dashboard`
+  - Displays customer stats via mocked RPC `get_customer_stats`.
+- `Investors`
+  - Create investors; managers approve/reject; supports image URLs.
+- `Agents`
+  - Create agents; managers approve/reject.
+- `Investments`
+  - Create company investments; managers approve/reject.
+- `Plans`
+  - View/manage plans (manager+).
+- `Payments`
+  - View scheduled payments (manager+).
+- `Users`
+  - Manage user roles (super_admin).
+
+---
+
+### Data Models (frontend expectations)
 - profiles
   { id, user_id, email, first_name, last_name, role('super_admin'|'manager'|'office_staff'), created_at, updated_at }
+
 - customers (investors)
   { id, first_name, last_name, email, phone, address, pan_number, aadhar_number, plan_id, investment_amount,
     approval_status('pending'|'approved'|'rejected'), submitted_by, reviewed_by, review_comments, approved_at,
-    created_at, images?: string[] (base64 data URLs) }
+    created_at, updated_at, images?: string[] (URLs or base64 in mock), data_access_level?: 'BASIC_ACCESS'|'FULL_ACCESS' }
+
 - plans
   { id, name, segment('PRE-IPO'|'REAL ESTATE'|'DIRECT'), investment_amount, duration_months, return_percentage,
     is_active, created_at, updated_at }
+
 - payment_schedules
   { id, customer_id, amount, payment_date(YYYY-MM-DD), is_paid, paid_at, created_at,
-    customers?: { first_name, last_name, investment_amount } (denormalized for UI) }
+    payment_type?: 'monthly'|string,
+    customers?: { first_name, last_name, investment_amount } }
+
 - agents
   { id, first_name, last_name, email, phone, address, pan_number, commission_percentage,
-    approval_status, submitted_by, reviewed_by, review_comments, approved_at, created_at, images?: string[] }
+    approval_status, submitted_by, reviewed_by, review_comments, approved_at,
+    created_at, updated_at, images?: string[] }
+
 - company_investments
   { id, investment_name, description, investment_amount, expected_return, investment_date, plan_id,
-    approval_status, submitted_by, reviewed_by, review_comments, approved_at, created_at, images?: string[] }
+    approval_status, submitted_by, reviewed_by, review_comments, approved_at,
+    created_at, updated_at, images?: string[] }
 
-Auth & Roles
-- Office Staff: can create/submit investors, agents, investments; cannot approve
-- Manager: can approve/reject
-- Super Admin: can approve/reject and view details (View buttons) with uploaded images
+---
 
-Backend Integration Guide
-- Replace src/integrations/supabase/client.ts with real SDK calls.
-- Implement the following endpoints/queries:
-  - Profiles: CRUD via single table `profiles` with unique user_id
-  - Investors (customers): list (with masking by role), create, approve/reject
-  - Agents: list, create, approve/reject
-  - Company Investments: list, create, approve/reject
-  - Plans: list active plans
-  - Dashboard RPC equivalents:
-    * get_customer_stats → returns { total_customers, pending_approvals, approved_customers, rejected_customers }[]
-    * get_customers_by_role → returns customers with masked fields based on role
-    * approve_customer_secure({ customer_id, action, comments }) → updates approval fields
-- Image Handling:
-  - Frontend currently stores images as base64 data URLs in the `images` array field
-  - In production, use object storage (e.g., S3, Supabase Storage). Store URLs in `images: string[]`
-  - Update forms to upload to storage, then save returned URLs in the table
+### Approval Workflow & RBAC
+- Uniform fields across customers, agents, and company investments:
+  - `approval_status`: 'pending'|'approved'|'rejected'
+  - `reviewed_by`: user_id of approver
+  - `review_comments`: string|null
+  - `approved_at`: ISO timestamp|null
+  - `submitted_by`: user_id of creator
 
-Approval Flow Fields (apply uniformly across customers, agents, company_investments)
-- approval_status: 'pending'|'approved'|'rejected'
-- reviewed_by: user_id
-- review_comments: string|null
-- approved_at: timestamp|null
-- submitted_by: user_id
+- Roles
+  - `office_staff`: create entities, read lists with masking; cannot approve
+  - `manager`: all of the above + approve/reject
+  - `super_admin`: full access, including sensitive details
 
-Security & Masking
-- get_customers_by_role should mask sensitive fields for non-privileged roles:
-  - BASIC_ACCESS: hide address, pan_number, aadhar_number; return placeholders ('HIDDEN')
-  - FULL_ACCESS: show all fields
+- Masking (for customers):
+  - BASIC_ACCESS (office_staff): mask `address`, `pan_number`, `aadhar_number` → 'HIDDEN'
+  - FULL_ACCESS (manager, super_admin): unmasked
 
-Front-end Expectations for API Responses
-- Queries accept filters similar to:
-  - /customers?status=pending or role-based returns
-  - /plans?is_active=true
-- Approval endpoints respond with success boolean and updated entity
+---
 
-How to Swap Mock with Real Backend
-1) Keep repo interfaces unchanged (profileRepo/customerRepo)
-2) Implement each repo function to call your backend endpoints
-3) Remove demoSeed invocation in src/main.tsx once real data is present
-4) Remove mock-specific UI if needed
+### Repository Layer → Backend Mapping
+Keep repository interfaces stable and swap implementations to call your backend.
 
-Testing Roles
-- Use Auth page demo buttons to switch roles and verify UI permissions
-- Pending counts on Dashboard should reflect your DB
+- `src/lib/profileRepo.ts`
+  - `getProfileByUserId(userId)` → GET `/profiles/:user_id`
+  - `listProfiles()` → GET `/profiles`
+  - `createProfile(input)` → POST `/profiles`
+  - `updateUserRole(userId, role)` → PATCH `/profiles/:user_id`
 
-Notes
-- All lists paginate-ready; add pagination parameters if needed
-- Types are TS-enforced in repo interfaces
+- `src/lib/customerRepo.ts`
+  - `listInvestorsWithAccess()` → GET `/customers` (apply masking by role)
+  - `listActivePlans()` → GET `/plans?is_active=true`
+  - `createInvestor(...)` → POST `/customers`
+  - `approveInvestorSecure(id, action, comments?)` → POST `/customers/:id/approve` or `/customers/:id/reject`
 
-Backend API Contract (Proposed)
+- Mocked RPCs in `src/integrations/supabase/client.ts`
+  - `get_customer_stats`: returns `{ total_customers, pending_approvals, approved_customers, rejected_customers }[]`
+  - `get_customers_by_role`: returns customers with data_access_level (FULL_ACCESS in mock)
+  - `approve_customer_secure({ customer_id, action, comments })`: updates approval fields
+
+---
+
+### Proposed Backend API Contract
 - Auth
-  - POST /auth/sessions (email OTP or SSO) → { token, user }
-  - GET /auth/profile → current user profile
+  - POST `/auth/sessions` (email OTP or SSO) → `{ token, user }`
+  - GET `/auth/profile` → current user profile
 
-- Profiles (single table)
-  - GET /profiles?search=&page=&page_size= → { items: Profile[], total }
-  - POST /profiles → Create profile
-  - PATCH /profiles/:user_id → Update role, names
+- Profiles
+  - GET `/profiles?search=&page=&page_size=` → `{ items: Profile[], total }`
+  - POST `/profiles` → create profile
+  - PATCH `/profiles/:user_id` → update role/names
 
 - Investors (customers)
-  - GET /customers?status=pending|approved|rejected&search=&page=&page_size=&plan_id=
-    → { items: Customer[], total }
-  - POST /customers → Create (body fields per model). Returns created row
-  - POST /customers/:id/approve → { comments? } (role ≥ manager)
-  - POST /customers/:id/reject → { comments? } (role ≥ manager)
+  - GET `/customers?status=pending|approved|rejected&search=&page=&page_size=&plan_id=` → `{ items: Customer[], total }`
+  - POST `/customers` → create
+  - POST `/customers/:id/approve` → `{ comments? }`
+  - POST `/customers/:id/reject` → `{ comments? }`
 
 - Agents
-  - GET /agents?status=&search=&page=&page_size= → { items: Agent[], total }
-  - POST /agents → Create
-  - POST /agents/:id/approve → { comments? }
-  - POST /agents/:id/reject → { comments? }
+  - GET `/agents?status=&search=&page=&page_size=` → `{ items: Agent[], total }`
+  - POST `/agents` → create
+  - POST `/agents/:id/approve` / `/reject`
 
 - Company Investments
-  - GET /investments?status=&search=&page=&page_size=&plan_id= → { items: Investment[], total }
-  - POST /investments → Create
-  - POST /investments/:id/approve → { comments? }
-  - POST /investments/:id/reject → { comments? }
+  - GET `/investments?status=&search=&page=&page_size=&plan_id=` → `{ items: Investment[], total }`
+  - POST `/investments` → create
+  - POST `/investments/:id/approve` / `/reject`
 
 - Plans
-  - GET /plans?is_active=true → Plan[]
+  - GET `/plans?is_active=true` → `Plan[]`
 
 - Dashboard
-  - GET /stats/customers → { total_customers, pending_approvals, approved_customers, rejected_customers }
+  - GET `/stats/customers` → `{ total_customers, pending_approvals, approved_customers, rejected_customers }`
 
-Uniform Approval Workflow (All 3 entities)
-- Fields updated on decision:
-  - approval_status: 'approved'|'rejected'
-  - reviewed_by: user_id of approver
-  - review_comments: optional string
-  - approved_at: ISO timestamp when approved (null if rejected)
+- Error shape
+  - 4xx/5xx → `{ error: { code: string, message: string, details?: any } }`
 
-Role-based Access Control (RBAC)
-- office_staff
-  - Create customers/agents/investments
-  - Read lists with masked PII (see below)
-  - Cannot approve/reject
-- manager
-  - All of the above + approve/reject
-- super_admin
-  - All of the above + view details for any approved records; unrestricted masking
+---
 
-PII Masking Rules (GET /customers and details endpoints)
-- BASIC_ACCESS (office_staff)
-  - Replace address, pan_number, aadhar_number with 'HIDDEN'
-- FULL_ACCESS (manager, super_admin)
-  - Return all fields
+### Images/Document Uploads
+- Mock: images are stored as base64 data URLs in the `images: string[]` field.
+- Production: upload files to object storage (S3, Supabase Storage). Store returned URLs in `images: string[]`.
+- Recommended: validate mime type, size limits, virus scanning.
 
-Images/Document Uploads
-- Frontend currently sends base64 data URLs in `images: string[]` for each entity
-- Production: use object storage
-  - POST /uploads → returns { url } per file
-  - Client then POSTs entities with images: [url]
-  - Recommended: validate mime type, max size, and virus scan
+---
 
-Pagination & Sorting
-- Standard query params: page (1-based), page_size (default 20, max 100), sort (e.g., created_at:desc)
-- Responses include { items, total }
+### Pagination & Sorting
+- Standard query params: `page` (1-based), `page_size` (default 20, max 100), `sort` (e.g., `created_at:desc`).
+- Responses include `{ items, total }`.
 
-Error Format
-- 4xx/5xx → { error: { code: string, message: string, details?: any } }
-- Frontend expects meaningful `message`
+---
 
-Auth Expectations
-- Bearer token in Authorization header
-- /auth/profile returns { user_id, email, role }
-- Create operations set submitted_by to current user_id
+### Security & Auditing (backend responsibilities)
+- Enforce RBAC at the API layer; never rely on the client for masking/permissions.
+- Log CRUD/approvals to an `audit_trail` table: `{ id, table_name, record_id, action, old_values, new_values, performed_by, performed_at }`.
+- CORS: allow the frontend origin.
+- Rate limiting: protect approval endpoints.
+- File storage: use pre-signed upload URLs.
 
-Database Schema (Minimal)
-- profiles
-  - id (uuid), user_id (uuid unique), email (text unique), first_name (text), last_name (text), role (enum), created_at, updated_at
-- customers
-  - id (uuid), first_name, last_name, email, phone, address, pan_number, aadhar_number, plan_id (uuid FK plans), investment_amount (numeric),
-    approval_status (enum), submitted_by (uuid FK profiles.user_id), reviewed_by (uuid|null), review_comments (text|null), approved_at (timestamptz|null),
-    created_at (timestamptz), images (text[] of URLs)
-- agents
-  - id (uuid), first_name, last_name, email, phone, address, pan_number, commission_percentage (numeric), approval_status (enum), submitted_by, reviewed_by,
-    review_comments, approved_at, created_at, images (text[])
-- company_investments
-  - id (uuid), investment_name, description (text|null), investment_amount (numeric), expected_return (numeric|null), investment_date (date), plan_id (uuid FK plans),
-    approval_status (enum), submitted_by, reviewed_by, review_comments, approved_at, created_at, images (text[])
-- plans
-  - id (uuid), name (text), segment (enum), investment_amount (numeric), duration_months (int), return_percentage (numeric), is_active (bool), created_at, updated_at
-- payment_schedules
-  - id (uuid), customer_id (uuid FK customers), amount (numeric), payment_date (date), is_paid (bool), paid_at (timestamptz|null), created_at (timestamptz)
+---
 
-Security & Auditing
-- Log CRUD + approvals to an `audit_trail` table: { id, table_name, record_id, action, old_values, new_values, performed_by, performed_at }
-- Enforce RBAC at API layer; never rely on client for masking/permissions
+### NPM Scripts
+These are defined in `package.json`:
+- `dev` — Start Vite dev server
+- `build` — Production build
+- `build:dev` — Development-mode build (useful for debugging prod paths)
+- `preview` — Preview a production build locally
+- `lint` — Run ESLint
 
-Migrations & Seeds
-- Provide initial admin user (super_admin) and sample plans
-- Add constraints: unique (profiles.user_id), FK references, enum types for roles/status/segments
+---
 
-Mapping Frontend Calls → Backend Endpoints
-- profileRepo.getProfileByUserId → GET /profiles/:user_id
-- profileRepo.listProfiles → GET /profiles
-- profileRepo.createProfile → POST /profiles
-- profileRepo.updateUserRole → PATCH /profiles/:user_id
-- customerRepo.listInvestorsWithAccess → GET /customers (apply masking by role)
-- customerRepo.listActivePlans → GET /plans?is_active=true
-- customerRepo.createInvestor → POST /customers
-- customerRepo.approveInvestorSecure → POST /customers/:id/approve or /reject
+### Extending: Swap Mock with Real Backend
+1) Keep repository interfaces unchanged (`profileRepo.ts`, `customerRepo.ts`).
+2) Implement each repo function to call your backend endpoints.
+3) Remove `seedDemoData()` in `src/main.tsx` once real data is present.
+4) Replace mock-specific UI assumptions if needed.
 
-Deployment Notes
-- CORS: allow the frontend origin for the above endpoints
-- Rate limiting: protect approval endpoints
-- File storage: pre-signed upload URLs recommended
+---
+
+### Troubleshooting
+- 401 Unauthorized on requests:
+  - Ensure `authToken` is present in Local Storage and is valid for your backend.
+- OTP not received:
+  - Check your backend logs. For local demos, use the auth bypass snippet above.
+- CORS errors:
+  - Configure your backend to allow the Vite dev origin (e.g., `http://localhost:5173`).
+- Empty lists:
+  - When using the mock, confirm `seedDemoData()` ran (see browser console) and refresh.
+
+---
+
+### Notes
+- Types are enforced in the repository layer and UI components.
+- Lists are pagination-ready; add query params in your backend when needed.
+- This doc supersedes any older references to a non-existent `demoLogin(role)` helper; OTP + profile endpoints and the dev-bypass flow above are the supported paths.

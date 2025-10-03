@@ -48,7 +48,7 @@ const navigation: NavItem[] = [
     title: 'Investments',
     href: '/investments',
     icon: Building,
-    roles: ['super_admin', 'manager', 'office_staff']
+    roles: ['super_admin', 'manager']
   },
   {
     title: 'Payments',

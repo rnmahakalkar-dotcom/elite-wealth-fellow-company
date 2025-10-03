@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Finance-focused color scheme */
+    --background: 210 20% 98%;
+    --foreground: 210 12% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 12% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 12% 16%;
+
+    /* Primary: Deep Navy Blue for authority and trust */
+    --primary: 210 100% 12%;
+    --primary-foreground: 0 0% 98%;
+
+    /* Secondary: Professional Gray */
+    --secondary: 210 6% 93%;
+    --secondary-foreground: 210 12% 16%;
+
+    --muted: 210 6% 93%;
+    --muted-foreground: 210 8% 46%;
+
+    /* Accent: Success Green for positive actions */
+    --accent: 142 76% 36%;
+    --accent-foreground: 0 0% 98%;
+
+    /* Success: Financial Green */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+
+    /* Warning: Financial Orange */
+    --warning: 32 95% 44%;
+    --warning-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 210 12% 90%;
+    --input: 210 12% 95%;
+    --ring: 210 100% 50%;
+
+    --radius: 0.75rem;
+
+    /* Sidebar colors for navigation */
+    --sidebar-background: 210 100% 12%;
+    --sidebar-foreground: 210 30% 85%;
+    --sidebar-primary: 210 100% 50%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 210 50% 20%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 210 50% 20%;
+    --sidebar-ring: 210 100% 50%;
+
+    /* Finance-specific gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(210 100% 12%), hsl(210 100% 20%));
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 44%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(210 6% 98%));
+    
+    /* Shadows for depth */
+    --shadow-elegant: 0 8px 32px hsl(210 100% 12% / 0.08);
+    --shadow-card: 0 4px 16px hsl(210 50% 40% / 0.06);
+  }
+
+  .dark {
+    --background: 210 11% 8%;
+    --foreground: 210 30% 92%;
+
+    --card: 210 15% 10%;
+    --card-foreground: 210 30% 92%;
+
+    --popover: 210 15% 10%;
+    --popover-foreground: 210 30% 92%;
+
+    --primary: 210 100% 60%;
+    --primary-foreground: 210 11% 8%;
+
+    --secondary: 210 12% 16%;
+    --secondary-foreground: 210 30% 92%;
+
+    --muted: 210 12% 16%;
+    --muted-foreground: 210 15% 65%;
+
+    --accent: 142 76% 44%;
+    --accent-foreground: 210 11% 8%;
+
+    --success: 142 76% 44%;
+    --success-foreground: 210 11% 8%;
+
+    --warning: 32 95% 50%;
+    --warning-foreground: 210 11% 8%;
+
+    --destructive: 0 84% 65%;
+    --destructive-foreground: 210 11% 8%;
+
+    --border: 210 12% 20%;
+    --input: 210 12% 16%;
+    --ring: 210 100% 60%;
+
+    --sidebar-background: 210 15% 6%;
+    --sidebar-foreground: 210 30% 85%;
+    --sidebar-primary: 210 100% 60%;
+    --sidebar-primary-foreground: 210 11% 8%;
+    --sidebar-accent: 210 20% 12%;
+    --sidebar-accent-foreground: 210 30% 92%;
+    --sidebar-border: 210 20% 12%;
+    --sidebar-ring: 210 100% 60%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(210 100% 60%), hsl(210 100% 70%));
+    --gradient-success: linear-gradient(135deg, hsl(142 76% 44%), hsl(142 76% 52%));
+    --gradient-card: linear-gradient(145deg, hsl(210 15% 10%), hsl(210 12% 12%));
+    
+    --shadow-elegant: 0 8px 32px hsl(0 0% 0% / 0.3);
+    --shadow-card: 0 4px 16px hsl(0 0% 0% / 0.2);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

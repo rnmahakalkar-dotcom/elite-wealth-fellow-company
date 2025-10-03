@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,7 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { profile } = useAuth();
+    const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalCustomers: 0,
     totalAgents: 0,
@@ -174,8 +176,8 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-border/50 shadow-card">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" >
+        <Card className="border-border/50 shadow-card cursor-pointer"  onClick={() => navigate("/investors")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -186,7 +188,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 shadow-card">
+        <Card className="border-border/50 shadow-card cursor-pointer" onClick={() => navigate("/agents")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Agents</CardTitle>
             <FileText className="h-4 w-4 text-muted-foreground" />
@@ -197,7 +199,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/50 shadow-card">
+        <Card className="border-border/50 shadow-card cursor-pointer" onClick={() => navigate("/investments")}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Company Investments</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -209,7 +211,7 @@ export default function Dashboard() {
         </Card>
 
         {(['manager', 'super_admin'] as const).includes(profile?.role as any) && (
-          <Card className="border-border/50 shadow-card">
+          <Card className="border-border/50 shadow-card cursor-pointer" onClick={()=>navigate('/investors')}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
               <Clock className="h-4 w-4 text-warning" />
@@ -352,14 +354,14 @@ export default function Dashboard() {
             
             {(['manager', 'super_admin'] as const).includes(profile?.role as any) && (
               <>
-                <Button variant="outline" className="justify-start h-auto p-4" asChild>
+                <Button variant="outline" className="justify-start h-auto p-4 cursor-pointer" asChild onClick={()=>navigate('/investors')}>
                   <div className="flex flex-col items-start gap-1">
                     <AlertCircle className="h-4 w-4 text-warning" />
                     <span className="font-medium">Review Approvals</span>
                     <span className="text-xs text-muted-foreground">{stats.pendingApprovals} pending</span>
                   </div>
                 </Button>
-                <Button variant="outline" className="justify-start h-auto p-4" asChild>
+                <Button variant="outline" className="justify-start h-auto p-4 cursor-pointer" asChild   onClick={()=>navigate('/plans')}>
                   <div className="flex flex-col items-start gap-1">
                     <TrendingUp className="h-4 w-4" />
                     <span className="font-medium">Manage Plans</span>
@@ -370,7 +372,7 @@ export default function Dashboard() {
             )}
             
             {profile?.role === 'super_admin' && (
-              <Button variant="outline" className="justify-start h-auto p-4" asChild>
+              <Button variant="outline" className="justify-start h-auto p-4 cursor-pointer" asChild onClick={()=>navigate('/users')}>
                 <div className="flex flex-col items-start gap-1">
                   <Users className="h-4 w-4" />
                   <span className="font-medium">User Management</span>

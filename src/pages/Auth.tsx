@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,37 +9,22 @@ import { toast } from '@/components/ui/use-toast';
 import { Loader2, Shield, TrendingUp, Users } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 
-// Custom debounce hook
-function useDebounce<T extends (...args: any[]) => void>(callback: T, delay: number) {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
-  return (...args: Parameters<T>) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      callback(...args);
-    }, delay);
-  };
-}
-
 export default function Auth() {
-  const { signIn, verifyOtp } = useAuth();
+  const { user, signIn, verifyOtp, demoLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
 
-  // Debounce the send OTP function to prevent rapid submissions
-  const debouncedSendOtp = useDebounce(async (email: string) => {
+  // Redirect if already authenticated
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
+
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+
     setLoading(true);
     const { error } = await signIn(email);
     
@@ -52,17 +38,11 @@ export default function Auth() {
       setOtpSent(true);
       toast({
         title: "Code Sent",
-        description: "Check your email for the 6-digit verification code (expires in 5 minutes)"
+        description: "Check your email for the 6-digit verification code"
       });
     }
     
     setLoading(false);
-  }, 1000); // 1-second debounce
-
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    debouncedSendOtp(email);
   };
 
   const handleVerifyOtp = async (e: React.FormEvent) => {
@@ -96,6 +76,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/30 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
+        {/* Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="bg-primary rounded-full p-3">
@@ -111,6 +92,7 @@ export default function Auth() {
           </p>
         </div>
 
+        {/* Features */}
         <div className="grid grid-cols-3 gap-4 py-4">
           <div className="text-center space-y-2">
             <div className="bg-success/10 rounded-full p-2 mx-auto w-fit">
@@ -132,6 +114,14 @@ export default function Auth() {
           </div>
         </div>
 
+        {/* Quick Demo Login */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Button variant="outline" onClick={() => demoLogin('office_staff')}>Login as Office Staff</Button>
+          <Button variant="outline" onClick={() => demoLogin('manager')}>Login as Manager</Button>
+          <Button onClick={() => demoLogin('super_admin')}>Login as Super Admin</Button>
+        </div>
+
+        {/* Sign In Form */}
         <Card className="shadow-card border-border/50">
           <CardHeader className="text-center">
             <CardTitle className="text-xl">
@@ -234,6 +224,7 @@ export default function Auth() {
           </CardContent>
         </Card>
 
+        {/* Footer */}
         <div className="text-center text-xs text-muted-foreground">
           <p>Secured by enterprise-grade encryption</p>
         </div>

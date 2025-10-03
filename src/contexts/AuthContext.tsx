@@ -1,10 +1,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { getProfileByUserId, Profile as RepoProfile } from '@/lib/profileRepo';
 
 type Profile = RepoProfile;
 
-type AuthUser = { user_id: string; email: string; role: string } | null;
-type AuthSession = { token: string; user: AuthUser } | null;
+type AuthUser = { id: string; email?: string } | null;
+type AuthSession = { user: AuthUser } | null;
+
+// type AuthUser = { id: string; email?: string } | null;
+// type AuthSession = { user: AuthUser } | null;
 
 interface AuthContextType {
   user: AuthUser;
@@ -14,7 +18,7 @@ interface AuthContextType {
   signIn: (email: string) => Promise<{ error: any }>;
   verifyOtp: (email: string, token: string) => Promise<{ error: any }>;
   signOut: () => Promise<{ error: any }>;
-  fetchWithAuth: (endpoint: string, options?: RequestInit) => Promise<any>;
+  demoLogin: (role: 'super_admin' | 'manager' | 'office_staff') => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,125 +28,112 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const API_BASE = 'https://elite-wealth-company-project.vercel.app';
-
-  const fetchWithAuth = async (endpoint: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('authToken');
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      ...options,
-    };
-    const response = await fetch(`${API_BASE}${endpoint}`, config);
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'Request failed');
-    }
-    return response.json();
-  };
+  const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
   const fetchProfile = async (userId: string) => {
-    try {
-      const data = await fetchWithAuth(`/auth/profile`);
-      if (data) {
-        setProfile(data);
-        setUser({ user_id: data.user_id, email: data.email, role: data.role });
-        localStorage.setItem('authUser', JSON.stringify({ user_id: data.user_id, email: data.email, role: data.role }));
-        localStorage.setItem('authProfile', JSON.stringify(data));
-      }
-    } catch (error) {
-      console.error('Profile fetch error:', error);
-      setProfile(null);
-      setUser(null);
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('authUser');
-      localStorage.removeItem('authProfile');
-    }
+    const { data } = await getProfileByUserId(userId);
+    if (data) setProfile(data);
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const storedUser = localStorage.getItem('authUser');
-    const storedProfile = localStorage.getItem('authProfile');
-
-    if (token && storedUser && storedProfile) {
+    // Load demo auth if present
+    const demoRaw = localStorage.getItem('demoAuth');
+    if (demoRaw) {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        const parsedProfile = JSON.parse(storedProfile);
-        setUser(parsedUser);
-        setSession({ token, user: parsedUser });
-        setProfile(parsedProfile);
-        fetchProfile(parsedUser.user_id);
-      } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('authUser');
-        localStorage.removeItem('authProfile');
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-      }
-    } else {
-      setUser(null);
-      setSession(null);
-      setProfile(null);
+        const demo = JSON.parse(demoRaw);
+        if (demo && demo.user && demo.profile) {
+          setUser(demo.user);
+          setSession({ user: demo.user });
+          setProfile(demo.profile);
+          setLoading(false);
+          return; // skip mock supabase listener in demo mode
+        }
+      } catch {}
     }
-    setLoading(false);
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Defer profile fetching to avoid auth state change deadlock
+          setTimeout(() => {
+            fetchProfile(session.user.id);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
+        
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      
+      if (session?.user) {
+        setTimeout(() => {
+          fetchProfile(session.user.id);
+        }, 0);
+      }
+      
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/auth/otp-send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const result = await response.json();
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-      return { error: null };
-    } catch (error: any) {
-      return { error };
-    }
+    const { error } = await supabase.auth.signInWithOtp({
+      email
+    });
+    
+    return { error };
   };
 
-  const verifyOtp = async (email: string, otp: string) => {
-    try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
-      });
-      const result = await response.json();
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-      localStorage.setItem('authToken', result.token);
-      setUser(result.user);
-      setSession({ token: result.token, user: result.user });
-      await fetchProfile(result.user.user_id);
-      return { error: null };
-    } catch (error: any) {
-      return { error };
-    }
+  const verifyOtp = async (email: string, token: string) => {
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'email'
+    });
+    
+    return { error };
   };
 
   const signOut = async () => {
-    try {
-      await fetchWithAuth('/auth/logout', { method: 'POST' });
-    } catch (error) {
-      // Ignore logout errors
+    const { error } = await supabase.auth.signOut();
+    if (!error) {
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      localStorage.removeItem('demoAuth');
     }
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('authUser');
-    localStorage.removeItem('authProfile');
-    return { error: null };
+    return { error };
+  };
+
+  const demoLogin = (role: 'super_admin' | 'manager' | 'office_staff') => {
+    const demoUser = { id: 'demo-user-id', email: `${role}@demo.local` };
+    const demoProfile: Profile = {
+      id: 'demo-profile-id',
+      user_id: demoUser.id,
+      email: demoUser.email!,
+      first_name: role === 'super_admin' ? 'Super' : role === 'manager' ? 'Manager' : 'Office',
+      last_name: role === 'super_admin' ? 'Admin' : role === 'manager' ? 'User' : 'Staff',
+      role,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setUser(demoUser);
+    setSession({ user: demoUser });
+    setProfile(demoProfile);
+    localStorage.setItem('demoAuth', JSON.stringify({ user: demoUser, profile: demoProfile }));
+    setLoading(false);
   };
 
   const value = {
@@ -153,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signIn,
     verifyOtp,
     signOut,
-    fetchWithAuth,
+    demoLogin,
   };
 
   return (

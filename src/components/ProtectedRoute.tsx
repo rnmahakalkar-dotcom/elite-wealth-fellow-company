@@ -1,15 +1,14 @@
 import { ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
-  children?: ReactNode;
+  children: ReactNode;
   requiredRole?: 'super_admin' | 'manager' | 'office_staff';
-  requireAuth?: boolean;
 }
 
-export function ProtectedRoute({ children, requiredRole, requireAuth = true }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, profile, loading } = useAuth();
 
   if (loading) {
@@ -23,23 +22,19 @@ export function ProtectedRoute({ children, requiredRole, requireAuth = true }: P
     );
   }
 
-  if (requireAuth && (!user || !profile)) {
+  if (!user || !profile) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (!requireAuth && user && profile) {
-    return <Navigate to="/" replace />;
-  }
-
-  if (requireAuth && requiredRole && user && profile) {
+  if (requiredRole) {
     const roleHierarchy = {
       'office_staff': 1,
       'manager': 2,
       'super_admin': 3
     };
 
-    const userLevel = roleHierarchy[profile.role] || 0;
-    const requiredLevel = roleHierarchy[requiredRole] || 0;
+    const userLevel = roleHierarchy[profile.role];
+    const requiredLevel = roleHierarchy[requiredRole];
 
     if (userLevel < requiredLevel) {
       return (
@@ -53,5 +48,5 @@ export function ProtectedRoute({ children, requiredRole, requireAuth = true }: P
     }
   }
 
-  return children ? <>{children}</> : <Outlet />;
+  return <>{children}</>;
 }

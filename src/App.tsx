@@ -15,6 +15,9 @@ import Agents from "./pages/Agents";
 import Investments from "./pages/Investments";
 import Payments from "./pages/Payments";
 import NotFound from "./pages/NotFound";
+import Gifts from "./pages/Gifts";
+import InvestmentPayments from "./pages/InvestmentPayments";
+import AgentPayments from "./pages/AgentPayment";
 
 const queryClient = new QueryClient();
 
@@ -24,12 +27,9 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <BrowserRouter>
           <Routes>
-            <Route element={<ProtectedRoute requireAuth={false}/>}>
-               <Route path="/auth" element={<Auth />} />
-            </Route>
-           <Route element={<ProtectedRoute requireAuth={true}/>}>
+            <Route path="/auth" element={<Auth />} />
             <Route path="/" element={
               <ProtectedRoute>
                 <DashboardLayout>
@@ -79,10 +79,29 @@ const App = () => (
                 </DashboardLayout>
               </ProtectedRoute>
             } />
+             <Route path="/gifts" element={
+              <ProtectedRoute requiredRole="manager">
+                <DashboardLayout>
+                  <Gifts/>
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/investment-payments" element={
+              <ProtectedRoute requiredRole="manager">
+                <DashboardLayout>
+                  <InvestmentPayments/>
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/agent-payments" element={
+              <ProtectedRoute requiredRole="manager">
+                <DashboardLayout>
+                  <AgentPayments/>
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-           
-            </Route>
-             <Route path="*" element={<NotFound />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>

@@ -44,7 +44,7 @@ const db = {
   customers: [],
   // New transactional tables
   payments: [],
-  agent_payments: [],
+  agent_gifts: [],
 };
 
 type TableName = keyof typeof db;
@@ -92,7 +92,7 @@ function makeQuery(table: TableName): SelectQuery | any {
           if (
             table === 'payment_schedules' ||
             table === 'payments' ||
-            table === 'agent_payments'
+            table === 'agent_gifts'
           ) {
             if (!base.created_at) base.created_at = nowIso;
           }

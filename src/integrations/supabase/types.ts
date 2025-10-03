@@ -299,6 +299,114 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          id: string
+          customer_id: string
+          schedule_id: string | null
+          amount: number
+          status: string
+          method: string
+          reference_no: string | null
+          paid_at: string | null
+          created_at: string
+          submitted_by: string
+        }
+        Insert: {
+          id?: string
+          customer_id: string
+          schedule_id?: string | null
+          amount: number
+          status?: string
+          method: string
+          reference_no?: string | null
+          paid_at?: string | null
+          created_at?: string
+          submitted_by: string
+        }
+        Update: {
+          id?: string
+          customer_id?: string
+          schedule_id?: string | null
+          amount?: number
+          status?: string
+          method?: string
+          reference_no?: string | null
+          paid_at?: string | null
+          created_at?: string
+          submitted_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "payment_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_gifts: {
+        Row: {
+          id: string
+          agent_id: string
+          payment_id: string
+          gift_type: string
+          gift_value: number
+          gift_description: string | null
+          status: string
+          granted_at: string | null
+          created_at: string
+          reviewed_by: string | null
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          payment_id: string
+          gift_type: string
+          gift_value: number
+          gift_description?: string | null
+          status?: string
+          granted_at?: string | null
+          created_at?: string
+          reviewed_by?: string | null
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          payment_id?: string
+          gift_type?: string
+          gift_value?: number
+          gift_description?: string | null
+          status?: string
+          granted_at?: string | null
+          created_at?: string
+          reviewed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_gifts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_gifts_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plans: {
         Row: {
           created_at: string

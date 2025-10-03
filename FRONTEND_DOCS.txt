@@ -11,7 +11,7 @@ Key Directories
   - Provides auth/session/profile. Supports demoLogin(role) and OTP flows via mock.
 - src/integrations/supabase/client.ts
   - In-memory mock exposing supabase-like API: auth, from(table), rpc(name, args), __seed(partial)
-  - Tables in mock DB: profiles, customers, agents, company_investments, payment_schedules, plans, customer_pii_access_log
+  - Tables in mock DB: profiles, customers, agents, company_investments, payment_schedules, payments, agent_gifts, plans, customer_pii_access_log
   - Query chain methods: select, eq, order, limit, gte, lte, in, single, insert, update
   - RPC handlers implemented: get_customer_stats, get_customers_by_role, approve_customer_secure
 - src/lib/profileRepo.ts
@@ -40,6 +40,12 @@ Data Models (frontend expectations)
 - payment_schedules
   { id, customer_id, amount, payment_date(YYYY-MM-DD), is_paid, paid_at, created_at,
     customers?: { first_name, last_name, investment_amount } (denormalized for UI) }
+- payments (actual customer transactions)
+  { id, customer_id, schedule_id?, amount, status('pending'|'successful'|'failed'|'refunded'), method, reference_no?,
+    paid_at?, created_at, submitted_by }
+- agent_gifts (benefits for agents triggered by payments)
+  { id, agent_id, payment_id, gift_type('Voucher'|'Merchandise'|...), gift_value, gift_description?,
+    status('granted'|'pending'|'reversed'), granted_at?, created_at, reviewed_by? }
 - agents
   { id, first_name, last_name, email, phone, address, pan_number, commission_percentage,
     approval_status, submitted_by, reviewed_by, review_comments, approved_at, created_at, images?: string[] }
@@ -59,6 +65,8 @@ Backend Integration Guide
   - Investors (customers): list (with masking by role), create, approve/reject
   - Agents: list, create, approve/reject
   - Company Investments: list, create, approve/reject
+- Payments: list, create, reconcile
+- Agent Gifts: list, grant, reverse
   - Plans: list active plans
   - Dashboard RPC equivalents:
     * get_customer_stats → returns { total_customers, pending_approvals, approved_customers, rejected_customers }[]
@@ -196,6 +204,12 @@ Database Schema (Minimal)
   - id (uuid), name (text), segment (enum), investment_amount (numeric), duration_months (int), return_percentage (numeric), is_active (bool), created_at, updated_at
 - payment_schedules
   - id (uuid), customer_id (uuid FK customers), amount (numeric), payment_date (date), is_paid (bool), paid_at (timestamptz|null), created_at (timestamptz)
+- payments
+  - id (uuid), customer_id (uuid FK customers), schedule_id (uuid FK payment_schedules|null), amount (numeric), status (text),
+    method (text), reference_no (text|null), paid_at (timestamptz|null), created_at (timestamptz), submitted_by (uuid profiles.user_id)
+- agent_gifts
+  - id (uuid), agent_id (uuid FK agents), payment_id (uuid FK payments), gift_type (text), gift_value (numeric), gift_description (text|null),
+    status (text), granted_at (timestamptz|null), created_at (timestamptz), reviewed_by (uuid profiles.user_id|null)
 
 Security & Auditing
 - Log CRUD + approvals to an `audit_trail` table: { id, table_name, record_id, action, old_values, new_values, performed_by, performed_at }

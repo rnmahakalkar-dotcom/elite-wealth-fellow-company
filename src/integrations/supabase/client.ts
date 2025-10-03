@@ -42,6 +42,9 @@ const db = {
   customer_pii_access_log: [],
   plans: [],
   customers: [],
+  // New transactional tables
+  payments: [],
+  agent_gifts: [],
 };
 
 type TableName = keyof typeof db;
@@ -85,6 +88,13 @@ function makeQuery(table: TableName): SelectQuery | any {
             if (!base.approval_status) base.approval_status = 'pending';
             if (!base.created_at) base.created_at = nowIso;
             if (!base.updated_at) base.updated_at = nowIso;
+          }
+          if (
+            table === 'payment_schedules' ||
+            table === 'payments' ||
+            table === 'agent_gifts'
+          ) {
+            if (!base.created_at) base.created_at = nowIso;
           }
           return base;
         })

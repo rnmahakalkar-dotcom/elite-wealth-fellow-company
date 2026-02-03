@@ -39,10 +39,39 @@ export function seedDemoData() {
     { id: id(), investment_name: 'Real Estate Fund B', investment_amount: 2200000, investment_date: iso(now), description: 'RE growth', expected_return: 14, plan_id: plans[1].id, approval_status: 'pending', approved_at: null, review_comments: null, reviewed_by: null, submitted_by: 'demo-user-id', created_at: iso(now), updated_at: iso(now) },
   ];
 
+  // Payments (actual transactions) and agent gifts derived from payments
+  const payments = payment_schedules.slice(0, 2).map((s) => ({
+    id: id(),
+    customer_id: s.customer_id,
+    schedule_id: s.id,
+    amount: s.amount,
+    status: 'successful',
+    method: 'upi',
+    reference_no: 'TXN-' + Math.random().toString(36).slice(2, 10).toUpperCase(),
+    paid_at: iso(now),
+    created_at: iso(now),
+    submitted_by: 'demo-user-id',
+  }));
+
+  const agent_gifts = payments.map((p, idx) => ({
+    id: id(),
+    agent_id: agents[0].id,
+    payment_id: p.id,
+    gift_type: idx % 2 === 0 ? 'Voucher' : 'Merchandise',
+    gift_value: Math.round(p.amount * 0.01),
+    gift_description: idx % 2 === 0 ? 'Amazon Gift Card' : 'Company Backpack',
+    status: 'granted',
+    granted_at: iso(now),
+    created_at: iso(now),
+    reviewed_by: 'demo-user-id',
+  }));
+
   supabase.__seed({
     plans,
     customers,
     payment_schedules,
+    payments,
+    agent_gifts,
     agents,
     company_investments,
   } as any);
